@@ -5,17 +5,18 @@ import java.time.YearMonth;
 
 public class RegularMember extends Member {
 
+	// Constructor for creating a new RegularMember without specifying a member ID
 	public RegularMember(String firstName, String lastName, int age, LocalDate joinDate, double baseFee) {
 		super(firstName, lastName, age, joinDate, baseFee);
 		
 	}
-	
+	// Constructor for creating a RegularMember with an existing member ID
 	public RegularMember(String memberId, String firstName, String lastName, int age,
             LocalDate joinDate, double baseFee) {
   super(memberId, firstName, lastName, age, joinDate, baseFee);
 }
 	
-	
+	//Calculates the monthly fee for the given month based on the member’s performance
 	@Override
 	public double calculateMonthlyFee(YearMonth month) {
 		double fee=getBaseFee();
