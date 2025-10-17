@@ -1,7 +1,11 @@
 package com.gym.repository;
 
-import model.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import com.gym.model.Member;
+import com.gym.model.Performance;
 
 public class MemberRepository {
 	private final List<Member> members=new ArrayList<>();
