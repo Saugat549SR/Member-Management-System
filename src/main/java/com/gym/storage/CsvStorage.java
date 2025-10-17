@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class CsvStorage {
-    //
+    //Save member detail to new csv file
 	public String saveMembersToNewFile(List<Member> members, String directory) throws IOException {
         Objects.requireNonNull(members, "members");
         Path dir = ensureDirectory(directory);
@@ -98,7 +98,7 @@ public class CsvStorage {
         return savePerformancesToNewFile(all, directory);
     }
 
-    /** Load members from CSV path. Reconstructs correct subclass. */
+    // Load members from CSV path
     public List<Member> loadMembers(String filePath) throws IOException {
         List<Member> result = new ArrayList<>();
         Path p = Paths.get(filePath);
@@ -137,18 +137,13 @@ public class CsvStorage {
                 default:
                     continue;
             }
-
-                // NOTE: Member IDs are auto-generated in constructor.
-                // If you need to preserve the loaded ID, you could extend Member with a "protected Member(..., String id)" ctor.
-                // For now, we accept new IDs on load; alternatively store original id in notes or map.
-
                 result.add(m);
             }
         }
         return result;
     }
 
-    /** Load performances from CSV path. */
+    //Load performances from CSV path
     public List<Performance> loadPerformances(String filePath) throws IOException {
         List<Performance> result = new ArrayList<>();
         Path p = Paths.get(filePath);
@@ -243,6 +238,7 @@ public class CsvStorage {
         return cols.toArray(new String[0]);
     }
 
+    //static methods
     private static String safe(String[] arr, int idx) {
         return idx >= 0 && idx < arr.length ? arr[idx] : "";
     }
@@ -263,7 +259,7 @@ public class CsvStorage {
         try { return YearMonth.parse(s.trim()); } catch (Exception e) { return null; }
     }
 
-   
+   //attaching performance to members
     public void attachPerformancesToMembers(List<Member> members, List<Performance> performances) {
         Map<String, Member> map = members.stream()
                 .collect(Collectors.toMap(Member::getMemberId, m -> m, (a, b) -> a));
@@ -275,7 +271,7 @@ public class CsvStorage {
             }
         }
     }
-    
+    //saving member data to file
     public String saveMembersToFile(List<Member> members, String filePath) throws IOException {
         Objects.requireNonNull(members, "members");
         Path file = resolveTarget(filePath);
@@ -303,7 +299,7 @@ public class CsvStorage {
                     spaAccess = String.valueOf(pm.hasSpaAccess());
                     premiumFee = formatDouble(pm.getPremiumServiceFee());
                 } else {
-                    continue; // unknown subtype
+                    continue;
                 }
 
                 w.write(String.join(",",
@@ -325,7 +321,7 @@ public class CsvStorage {
         return file.toString();
     }
 
-    
+    //saving different performance to file
     public String savePerformancesToFile(List<Performance> performances, String filePath) throws IOException {
         Objects.requireNonNull(performances, "performances");
         Path file = resolveTarget(filePath);
@@ -348,7 +344,7 @@ public class CsvStorage {
         return file.toString();
     }
 
-   
+   //saving performance of member to file
     public String savePerformancesOfMembersToFile(List<Member> members, String filePath) throws IOException {
         List<Performance> all = new ArrayList<>();
         for (Member m : members) {
