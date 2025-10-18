@@ -55,6 +55,7 @@ public class MemberRepository {
 	
 
 	 
+	 
 	 public boolean replaceMember(String memberId, Member updated) {
 		    for (int i = 0; i < members.size(); i++) {
 		        Member old = members.get(i);
@@ -69,7 +70,7 @@ public class MemberRepository {
 		            return true;
 		        }
 		    }
-		    return false; // members not found
+		    return false;
 		}
 	 
 	 

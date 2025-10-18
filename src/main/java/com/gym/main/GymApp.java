@@ -40,7 +40,7 @@ public class GymApp {
             switch (choice) {
                 case 1 -> optionLoadRecordsIntoRepository();
                 case 2 -> optionAddMemberAndSave();
-                case 3 -> optionUpdateMemberAndSave();     // now also supports recording performance
+                case 3 -> optionUpdateMemberAndSave();     // includes recording performance + edit details
                 case 4 -> optionDeleteMemberAndSave();
                 case 5 -> optionLoadFileAndQueryOnly();
                 case 6 -> { System.out.println("Goodbye!"); return; }
@@ -88,7 +88,7 @@ public class GymApp {
         }
     }
 
-  // Update or convert member
+    // Add a member and save to fixed CSVs
     private void optionAddMemberAndSave() {
         Member m = createMemberInteractively();
         if (m == null) return;
@@ -101,7 +101,7 @@ public class GymApp {
         saveSnapshot();  // overwrites data/members.csv and data/performances.csv
     }
 
- 
+    // Update / Convert / Record performance / Edit personal details
     private void optionUpdateMemberAndSave() {
         String id = Input.readString(in, "Enter Member ID to update: ");
         Member old = repo.findMemberById(id);
@@ -118,6 +118,7 @@ public class GymApp {
         System.out.println("4. Convert to Premium");
         System.out.println("5. Record monthly performance");
         System.out.println("6. Cancel");
+        System.out.println("7. Edit personal details (name, age, join date)"); // NEW
 
         int choice = Input.readInt(in, "Choose: ");
         switch (choice) {
@@ -163,6 +164,9 @@ public class GymApp {
                 optionRecordPerformance(old); // handles its own save
             }
             case 6 -> System.out.println("Cancelled.");
+            case 7 -> { // NEW
+                editPersonalDetails(old);
+            }
             default -> System.out.println("Invalid choice.");
         }
     }
@@ -189,14 +193,13 @@ public class GymApp {
         for (Performance p : old.getPerformanceHistory()) {
             updated.addOrReplacePerformance(p);
         }
-        // replace in repository 
+        // replace in repository
         if (!repo.replaceMember(old.getMemberId(), updated)) {
             repo.deleteMember(old.getMemberId());
             repo.addMember(updated);
         }
     }
 
-  
     private void optionDeleteMemberAndSave() {
         if (repo.isEmpty()) {
             System.out.println("Repository is empty. Load or add members first.");
@@ -208,20 +211,20 @@ public class GymApp {
         if (ok) saveSnapshot();
     }
 
-   
+    // Viewer for a CSV without touching repo
     private void optionLoadFileAndQueryOnly() {
         String membersPath = Input.readLine(in,
                 "Path to MEMBERS CSV to view (Enter for default " + MEMBERS_FILE + "): ");
         if (membersPath.isBlank()) membersPath = MEMBERS_FILE;
 
-        // NEW: ask for performances file (default to PERF_FILE)
+        // Ask for performances file (default to PERF_FILE)
         String perfPath = Input.readLine(in,
                 "Path to PERFORMANCES CSV to view (Enter for default " + PERF_FILE + ", or leave empty to skip): ");
 
         try {
             List<Member> list = storage.loadMembers(membersPath);
 
-            // NEW: attach performances if a path is provided (or use default)
+            // attach performances if a path is provided (or use default)
             if (perfPath.isBlank()) {
                 boolean useDefault = Input.readYesNo(in, "Use default performances file? (y/n): ");
                 if (useDefault) perfPath = PERF_FILE;
@@ -260,7 +263,7 @@ public class GymApp {
                             if (ym == null) {
                                 System.out.println("Invalid month.");
                             } else {
-                                printFeeBreakdown(m, ym); // your existing breakdown method
+                                printFeeBreakdown(m, ym);
                             }
                         }
                     }
@@ -281,9 +284,7 @@ public class GymApp {
         }
     }
 
-    
-    // Record monthly performance
-   
+    // Record monthly performance (and save)
     private void optionRecordPerformance(Member m) {
         System.out.println("Recording performance for: " + m.getSummary());
 
@@ -309,9 +310,7 @@ public class GymApp {
         System.out.println("Performance saved.");
     }
 
- 
     // Helpers
-    
 
     private Member createMemberInteractively() {
         System.out.println("Choose type: 1=Regular, 2=Personal Training, 3=Premium");
@@ -351,68 +350,6 @@ public class GymApp {
         }
     }
 
-    // NEW: Detailed fee breakdown for a given month
-    private void printMonthlyFeeBreakdown(Member m, YearMonth month) {
-        System.out.println("\nMonthly Fee Breakdown for " + month + ":");
-        System.out.println(m.getSummary());
-
-        double base = m.getBaseFee();
-        double extras = 0.0;
-        String extrasLabel = "";
-
-        if (m instanceof PersonalTrainingMember pt) {
-            extras = pt.getSessionsPerMonth() * pt.getFeePerSession();
-            extrasLabel = "Sessions × Fee";
-        } else if (m instanceof PremiumMember pm) {
-            extras = pm.hasSpaAccess() ? pm.getPremiumServiceFee() : 0.0;
-            extrasLabel = pm.hasSpaAccess() ? "Premium service" : "Premium service (none)";
-        } else {
-            extrasLabel = "Extras";
-        }
-
-        Performance p = m.getPerformance(month);
-        double discount = 0.0;
-        double penalty  = 0.0;
-
-        if (p != null) {
-            if (p.getGoalAchieved()) {
-                discount = 0.10 * (base + extras); // 10% off total monthly cost
-            }
-            if (p.getRating() != null && p.getRating() <= 2) {
-                penalty = 10.0;
-            }
-        } else {
-            System.out.println("(No performance record for " + month + ")");
-        }
-
-        double subtotal = base + extras;
-        double total = Math.max(0.0, subtotal - discount + penalty);
-
-        System.out.printf("Base fee:           $%.2f%n", base);
-        System.out.printf("%-20s $%.2f%n", extrasLabel + ":", extras);
-        System.out.printf("Subtotal:           $%.2f%n", subtotal);
-        System.out.printf("Performance disc.: -$%.2f%n", discount);
-        System.out.printf("Low-rating penalty:+$%.2f%n", penalty);
-        System.out.println("-------------------------------");
-        System.out.printf("Total:              $%.2f%n%n", total);
-    }
-
-    private void saveSnapshot() {
-        try {
-            storage.saveMembersToFile(repo.getAllMembers(), MEMBERS_FILE);
-            storage.savePerformancesOfMembersToFile(repo.getAllMembers(), PERF_FILE);
-            System.out.println("Saved to fixed files:");
-            System.out.println(" - " + MEMBERS_FILE);
-            System.out.println(" - " + PERF_FILE);
-        } catch (IOException e) {
-            System.out.println("Failed to save: " + e.getMessage());
-        }
-    }
-
-    private void ensureDataDir() {
-        try { Files.createDirectories(Paths.get(DATA_DIR)); }
-        catch (IOException ignored) {}
-    }
     private void printFeeBreakdown(Member m, YearMonth month) {
         System.out.println("\nMonthly Fee Breakdown for " + month + ":");
         System.out.println("ID: " + m.getMemberId() + " | " + m.getFirstName() + " " + m.getLastName() +
@@ -457,4 +394,96 @@ public class GymApp {
         System.out.println("Total:          $" + String.format("%.2f", total));
     }
 
+    private void saveSnapshot() {
+        try {
+            storage.saveMembersToFile(repo.getAllMembers(), MEMBERS_FILE);
+            storage.savePerformancesOfMembersToFile(repo.getAllMembers(), PERF_FILE);
+            System.out.println("Saved to fixed files:");
+            System.out.println(" - " + MEMBERS_FILE);
+            System.out.println(" - " + PERF_FILE);
+        } catch (IOException e) {
+            System.out.println("Failed to save: " + e.getMessage());
+        }
+    }
+
+    private void ensureDataDir() {
+        try { Files.createDirectories(Paths.get(DATA_DIR)); }
+        catch (IOException ignored) {}
+    }
+
+    /**
+     * Edit first name, last name, age, and join date.
+     * Keeps memberId, base fee, and subtype-specific fields the same.
+     */
+    private void editPersonalDetails(Member old) {
+        System.out.println("\n-- Edit Personal Details --");
+        System.out.println("(Press Enter to keep existing value)");
+
+        // First name
+        String firstIn = Input.readLine(in, "First name [" + old.getFirstName() + "]: ").trim();
+        String first = firstIn.isBlank() ? old.getFirstName() : firstIn;
+
+        // Last name
+        String lastIn = Input.readLine(in, "Last name [" + old.getLastName() + "]: ").trim();
+        String last = lastIn.isBlank() ? old.getLastName() : lastIn;
+
+        // Age
+        int age = old.getAge();
+        String ageIn = Input.readLine(in, "Age [" + old.getAge() + "]: ").trim();
+        if (!ageIn.isBlank()) {
+            try {
+                age = Integer.parseInt(ageIn);
+                if (age <= 0) {
+                    System.out.println("Age must be positive. Keeping old value.");
+                    age = old.getAge();
+                }
+            } catch (NumberFormatException ex) {
+                System.out.println("Invalid number. Keeping old age.");
+                age = old.getAge();
+            }
+        }
+
+        // Join date
+        LocalDate join = old.getJoinDate();
+        String dateIn = Input.readLine(in, "Join date (YYYY-MM-DD) [" + old.getJoinDate() + "]: ").trim();
+        if (!dateIn.isBlank()) {
+            try {
+                join = LocalDate.parse(dateIn);
+            } catch (Exception ex) {
+                System.out.println("Invalid date. Keeping old join date.");
+                join = old.getJoinDate();
+            }
+        }
+
+        // Rebuild a member of the SAME subtype, preserving subtype fields + base fee
+        Member updated;
+        if (old instanceof RegularMember) {
+            updated = new RegularMember(old.getMemberId(), first, last, age, join, old.getBaseFee());
+        } else if (old instanceof PersonalTrainingMember pt) {
+            updated = new PersonalTrainingMember(
+                    old.getMemberId(), first, last, age, join,
+                    old.getBaseFee(), pt.getSessionsPerMonth(), pt.getFeePerSession());
+        } else if (old instanceof PremiumMember pm) {
+            updated = new PremiumMember(
+                    old.getMemberId(), first, last, age, join,
+                    old.getBaseFee(), pm.hasSpaAccess(), pm.getPremiumServiceFee());
+        } else {
+            // fallback to regular if unknown
+            updated = new RegularMember(old.getMemberId(), first, last, age, join, old.getBaseFee());
+        }
+
+        // Preserve performance history
+        for (Performance p : old.getPerformanceHistory()) {
+            updated.addOrReplacePerformance(p);
+        }
+
+        // Replace in repo and save
+        if (!repo.replaceMember(old.getMemberId(), updated)) {
+            repo.deleteMember(old.getMemberId());
+            repo.addMember(updated);
+        }
+
+        saveSnapshot();
+        System.out.println("Personal details updated and saved.");
+    }
 }
